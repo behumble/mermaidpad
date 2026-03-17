@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mermaid Pad</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root[data-theme="dark"] {
+      --bg-primary: #1e1e2e;
+      --bg-secondary: #181825;
+      --text-primary: #cdd6f4;
+      --text-muted: #6c7086;
+      --border: #313244;
+      --accent: #89b4fa;
+      --preview-bg: #2a2a3c;
+      --error-text: #f38ba8;
+      --error-bg: #1e1e2e;
+      --ctrl-bg: #313244;
+      --ctrl-text: #cdd6f4;
+      --ctrl-border: #45475a;
+      --ctrl-hover: #45475a;
+    }
+
+    :root[data-theme="light"] {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #e8e8e8;
+      --text-primary: #333333;
+      --text-muted: #888888;
+      --border: #d0d0d0;
+      --accent: #4a90d9;
+      --preview-bg: #ffffff;
+      --error-text: #d93025;
+      --error-bg: #fef0ef;
+      --ctrl-bg: #fff;
+      --ctrl-text: #333;
+      --ctrl-border: #ccc;
+      --ctrl-hover: #f0f0f0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-right span {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .theme-toggle {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .theme-toggle:hover {
+      background: var(--border);
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .editor-pane {
+      width: 40%;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+
+    .pane-header {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    textarea {
+      flex: 1;
+      padding: 16px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+
+    .preview-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #preview {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      background: var(--preview-bg);
+      cursor: grab;
+    }
+
+    #preview.panning {
+      cursor: grabbing;
+    }
+
+    #preview-canvas {
+      transform-origin: 0 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: inline-block;
+    }
+
+    #preview-canvas svg {
+      display: block;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 4px;
+      z-index: 10;
+    }
+
+    .zoom-controls button {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--ctrl-border);
+      border-radius: 6px;
+      background: var(--ctrl-bg);
+      color: var(--ctrl-text);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: background 0.15s;
+    }
+
+    .zoom-controls button:hover {
+      background: var(--ctrl-hover);
+    }
+
+    .zoom-level {
+      height: 32px;
+      padding: 0 8px;
+      border: 1px solid var(--ctrl-border);
+      border-radius: 6px;
+      background: var(--ctrl-bg);
+      color: var(--ctrl-text);
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      user-select: none;
+    }
+
+    #preview .error {
+      color: var(--error-text);
+      background: var(--error-bg);
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      max-width: 100%;
+    }
+
+    .divider {
+      width: 4px;
+      cursor: col-resize;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+
+    .divider:hover, .divider.active {
+      background: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><img src="https://mermaid.js.org/favicon.svg" style="width: 24px; margin-right: 8px;"/>Mermaid Pad</h1>
+    <div class="header-right">
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme"></button>
+    </div>
+  </header>
+  <div class="container">
+    <div class="editor-pane" id="editorPane">
+      <div class="pane-header">Editor</div>
+      <textarea id="editor" spellcheck="false" placeholder="Enter Mermaid diagram code here...">graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Do something]
+    B -->|No| D[Do something else]
+    C --> E[End]
+    D --> E</textarea>
+    </div>
+    <div class="divider" id="divider"></div>
+    <div class="preview-pane">
+      <div class="pane-header">Preview</div>
+      <div id="preview">
+        <div id="preview-canvas"></div>
+        <div class="zoom-controls">
+          <button id="zoomIn" title="Zoom in">+</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button id="zoomOut" title="Zoom out">&minus;</button>
+          <button id="zoomFit" title="Fit to view">Fit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+    // Theme management
+    const root = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const THEME_KEY = 'mermaid-pad-theme';
+
+    function getTheme() {
+      return root.getAttribute('data-theme');
+    }
+
+    function applyTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      localStorage.setItem(THEME_KEY, theme);
+      themeToggle.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+      mermaid.initialize({ startOnLoad: false, look: 'handDrawn', theme: theme === 'dark' ? 'dark' : 'default' });
+    }
+
+    // Restore saved theme or use system preference
+    const saved = localStorage.getItem(THEME_KEY);
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+
+    themeToggle.addEventListener('click', () => {
+      applyTheme(getTheme() === 'dark' ? 'light' : 'dark');
+      renderDiagram();
+    });
+
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const canvas = document.getElementById('preview-canvas');
+    const zoomLevelEl = document.getElementById('zoomLevel');
+    let debounceTimer;
+
+    // Zoom & pan state
+    let scale = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panStartPanX = 0;
+    let panStartPanY = 0;
+
+    function applyTransform() {
+      canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+      zoomLevelEl.textContent = Math.round(scale * 100) + '%';
+    }
+
+    function zoomTo(newScale, centerX, centerY) {
+      const prevScale = scale;
+      scale = Math.min(Math.max(newScale, 0.1), 5);
+      panX = centerX - (centerX - panX) * (scale / prevScale);
+      panY = centerY - (centerY - panY) * (scale / prevScale);
+      applyTransform();
+    }
+
+    function fitToView() {
+      const svgEl = canvas.querySelector('svg');
+      if (!svgEl) return;
+      const pw = preview.clientWidth;
+      const ph = preview.clientHeight;
+      const sw = svgEl.width.baseVal.value || svgEl.getBoundingClientRect().width / scale;
+      const sh = svgEl.height.baseVal.value || svgEl.getBoundingClientRect().height / scale;
+      if (!sw || !sh) return;
+      const padding = 40;
+      scale = Math.min((pw - padding) / sw, (ph - padding) / sh, 2);
+      panX = (pw - sw * scale) / 2;
+      panY = (ph - sh * scale) / 2;
+      applyTransform();
+    }
+
+    // Wheel zoom (centered on cursor)
+    preview.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = preview.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      zoomTo(scale * factor, cx, cy);
+    }, { passive: false });
+
+    // Mouse panning
+    preview.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isPanning = true;
+      panStartX = e.clientX;
+      panStartY = e.clientY;
+      panStartPanX = panX;
+      panStartPanY = panY;
+      preview.classList.add('panning');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      panX = panStartPanX + (e.clientX - panStartX);
+      panY = panStartPanY + (e.clientY - panStartY);
+      applyTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isPanning) {
+        isPanning = false;
+        preview.classList.remove('panning');
+      }
+    });
+
+    // Zoom buttons
+    document.getElementById('zoomIn').addEventListener('click', () => {
+      const cx = preview.clientWidth / 2;
+      const cy = preview.clientHeight / 2;
+      zoomTo(scale * 1.25, cx, cy);
+    });
+
+    document.getElementById('zoomOut').addEventListener('click', () => {
+      const cx = preview.clientWidth / 2;
+      const cy = preview.clientHeight / 2;
+      zoomTo(scale / 1.25, cx, cy);
+    });
+
+    document.getElementById('zoomFit').addEventListener('click', fitToView);
+
+    async function renderDiagram() {
+      const code = editor.value.trim();
+      if (!code) {
+        canvas.innerHTML = '';
+        return;
+      }
+
+      try {
+        const { svg } = await mermaid.render('mermaid-diagram', code);
+        canvas.innerHTML = svg;
+        requestAnimationFrame(fitToView);
+      } catch (err) {
+        canvas.innerHTML = `<div class="error">${err.message || err}</div>`;
+        const broken = document.getElementById('dmermaid-diagram');
+        if (broken) broken.remove();
+      }
+    }
+
+    editor.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(renderDiagram, 300);
+    });
+
+    // Resizable divider
+    const divider = document.getElementById('divider');
+    const editorPane = document.getElementById('editorPane');
+    let dragging = false;
+
+    divider.addEventListener('mousedown', () => {
+      dragging = true;
+      divider.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const containerWidth = editorPane.parentElement.offsetWidth;
+      const pct = (e.clientX / containerWidth) * 100;
+      if (pct > 15 && pct < 85) {
+        editorPane.style.width = pct + '%';
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (dragging) {
+        dragging = false;
+        divider.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
+
+    // Tab key support in textarea
+    editor.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 2;
+      }
+    });
+
+    // Initial render
+    renderDiagram();
+  </script>
+</body>
+</html>
